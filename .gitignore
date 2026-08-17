@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.pytest_cache/
+steve.db*
+strava_tokens.json
+firmware/config.py
+logs/
