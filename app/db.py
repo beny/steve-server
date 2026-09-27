@@ -57,6 +57,13 @@ def last_pulse_ts() -> int | None:
         return row[0]
 
 
+def pulse_overview() -> tuple[int, int | None]:
+    """Celkový počet otáček a čas poslední otáčky pro přehled."""
+    with connect() as conn:
+        row = conn.execute("SELECT COUNT(*), MAX(ts_ms) FROM pulses").fetchone()
+        return row[0], row[1]
+
+
 def pulse_timestamps_since(since_ms: int) -> list[int]:
     with connect() as conn:
         cur = conn.execute(

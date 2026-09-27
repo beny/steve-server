@@ -22,6 +22,8 @@ python3 -m venv .venv
 .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+Webový přehled: http://macmini.local:8000/ (vzdálenost, aktivní čas a
+historie posledních 14 dní; obnovuje se každých 30 sekund).
 Interaktivní dokumentace API: http://localhost:8000/docs
 
 ## API
@@ -32,12 +34,12 @@ ESP posílá dávky relativních časů otáček (`time.ticks_ms()`), server je
 přepočte na absolutní čas podle okamžiku přijetí. Duplicitně poslaná dávka
 se tiše ignoruje (idempotence přes `boot_id` + `ticks`).
 
-Odpověď nese vše, co ESP potřebuje pro displej: `day` (aktuální křeččí
-den) a `latest` — součty posledního dne, který má nějaké otáčky. DIST
-a TIME na displeji jsou přímo hodnoty z `latest`; dokud Steve v novém
-dni neběžel, ukazuje se tak celá minulá noc a první večerní otáčka
-displej přirozeně přepne na nový den. ESP proto posílá dávky i prázdné
-(heartbeat) a lokálně počítá jen okamžitou rychlost.
+Odpověď nese `day` (aktuální křeččí den) a `latest` — součty posledního
+dne, který má nějaké otáčky. Firmware po úspěšném přenosu synchronizuje
+DIST podle `revolutions` a TIME podle `moving_time_s`; mezi přenosy
+přičítá nově zachycené otáčky lokálně. Dokud Steve v novém dni neběžel,
+ukazuje se celá minulá noc. ESP posílá i prázdné dávky (heartbeat).
+Displej se rozsvítí na 5 sekund po stisku FLASH.
 
 ```json
 {

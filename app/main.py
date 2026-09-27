@@ -1,8 +1,10 @@
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from . import db
@@ -26,6 +28,48 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Steve Server", lifespan=lifespan)
+
+
+@app.get("/", include_in_schema=False)
+def dashboard_page():
+    return FileResponse(Path(__file__).parent / "static" / "index.html")
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+def apple_touch_icon():
+    return FileResponse(Path(__file__).parent / "static" / "apple-touch-icon.png")
+
+
+@app.get("/icon.svg", include_in_schema=False)
+def browser_icon():
+    return FileResponse(Path(__file__).parent / "static" / "icon.svg", media_type="image/svg+xml")
+
+
+@app.get("/api/dashboard")
+def dashboard_data():
+    """Součty a posledních 14 křeččích dnů pro webový přehled."""
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    current_day = hamster_day(now_ms)
+    total_revolutions, last_ms = db.pulse_overview()
+
+    latest = None
+    if last_ms is not None:
+        latest_stamps = db.pulse_timestamps_since(
+            day_start_ms(hamster_day(last_ms))
+        )
+        latest = group_activities(latest_stamps, WHEEL_CIRCUMFERENCE_M)[-1]
+
+    first_day = (date.fromisoformat(current_day) - timedelta(days=13)).isoformat()
+    recent_stamps = db.pulse_timestamps_since(day_start_ms(first_day))
+    history = group_activities(recent_stamps, WHEEL_CIRCUMFERENCE_M)
+
+    return {
+        "day": current_day,
+        "latest": latest,
+        "total_revolutions": total_revolutions,
+        "total_distance_m": round(total_revolutions * WHEEL_CIRCUMFERENCE_M, 1),
+        "history": history,
+    }
 
 
 @app.post("/pulses")

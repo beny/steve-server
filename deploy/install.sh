@@ -8,9 +8,17 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LABEL="cz.steve.server"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 PORT="${STEVE_PORT:-8000}"
+PYTHON="${STEVE_PYTHON:-}"
+if [ -z "$PYTHON" ]; then
+    if [ -x /opt/homebrew/bin/python3 ]; then
+        PYTHON=/opt/homebrew/bin/python3
+    else
+        PYTHON=python3
+    fi
+fi
 
 echo "==> venv + závislosti"
-[ -d "$ROOT/.venv" ] || python3 -m venv "$ROOT/.venv"
+[ -d "$ROOT/.venv" ] || "$PYTHON" -m venv "$ROOT/.venv"
 "$ROOT/.venv/bin/pip" install -q -r "$ROOT/requirements.txt"
 
 mkdir -p "$ROOT/logs" "$HOME/Library/LaunchAgents"
@@ -50,13 +58,17 @@ echo "==> (re)start"
 launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
-sleep 1
-if curl -sf "http://localhost:$PORT/docs" > /dev/null; then
-    echo "OK: server běží na portu $PORT (log: logs/server.log)"
-else
-    echo "POZOR: server neodpovídá — koukni do logs/server.log"
-    exit 1
-fi
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if curl -sf "http://localhost:$PORT/docs" > /dev/null; then
+        echo "OK: server běží na portu $PORT (log: logs/server.log)"
+        break
+    fi
+    if [ "$attempt" -eq 10 ]; then
+        echo "POZOR: server neodpovídá — koukni do logs/server.log"
+        exit 1
+    fi
+    sleep 1
+done
 
 cat <<'HINT'
 

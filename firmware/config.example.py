@@ -1,5 +1,5 @@
 # Zkopíruj jako config.py a doplň — config.py je gitignorovaný.
-WIFI_SSID = "moje-wifi"
-WIFI_PASSWORD = "tajne-heslo"
-SERVER_URL = "http://192.168.1.10:8000"  # Mac mini
+WIFI_SSID = "aLAN"
+WIFI_PASSWORD = ""  # Doplň heslo Wi-Fi před nahráním do ESP.
+SERVER_URL = "http://macmini.local:8000"
 SEND_INTERVAL_MS = 20_000
