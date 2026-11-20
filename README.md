@@ -22,8 +22,9 @@ python3 -m venv .venv
 .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Webový přehled: http://macmini.local:8000/ (vzdálenost, aktivní čas a
-historie posledních 14 dní; obnovuje se každých 30 sekund).
+Webový přehled: http://macmini.local:8000/ (vzdálenost, aktivní čas,
+otáčky po hodinách aktuálního křeččího dne a historie posledních 14 dní;
+stav kola a obnova každých 5 sekund).
 Interaktivní dokumentace API: http://localhost:8000/docs
 
 ## API

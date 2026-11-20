@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from . import db
-from .activities import day_start_ms, group_activities, hamster_day
+from .activities import day_start_ms, group_activities, hamster_day, hourly_revolutions
 from .config import TICKS_PERIOD, WHEEL_CIRCUMFERENCE_M
 from .uploader import upload_loop
 
@@ -51,6 +51,7 @@ def dashboard_data():
     now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     current_day = hamster_day(now_ms)
     total_revolutions, last_ms = db.pulse_overview()
+    hamster_status = _hamster_status(now_ms, last_ms)
 
     latest = None
     if last_ms is not None:
@@ -65,9 +66,12 @@ def dashboard_data():
 
     return {
         "day": current_day,
+        "current_hour": datetime.fromtimestamp(now_ms / 1000).hour,
+        "hamster_status": hamster_status,
         "latest": latest,
         "total_revolutions": total_revolutions,
         "total_distance_m": round(total_revolutions * WHEEL_CIRCUMFERENCE_M, 1),
+        "hourly_revolutions": hourly_revolutions(recent_stamps, current_day),
         "history": history,
     }
 
@@ -96,6 +100,18 @@ def receive_pulses(batch: PulseBatch):
         "day": hamster_day(now_ms),
         "latest": _latest_day_stats(),
     }
+
+
+def _hamster_status(now_ms: int, last_pulse_ms: int | None) -> str:
+    """Infer wheel activity from the age of the last recorded revolution."""
+    if last_pulse_ms is None:
+        return "sleeping"
+    age_ms = max(0, now_ms - last_pulse_ms)
+    if age_ms <= 5_000:
+        return "running"
+    if age_ms <= 15 * 60 * 1000:
+        return "recent"
+    return "sleeping"
 
 
 def _latest_day_stats() -> dict | None:

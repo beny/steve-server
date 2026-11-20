@@ -28,6 +28,10 @@
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #b2b8ae; }
     .connection.ok .dot { background: #55a579; }
     .connection.error .dot { background: #d66c58; }
+    .statuses { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .hamster-status.running .dot { background: #55a579; }
+    .hamster-status.recent .dot { background: #d99a44; }
+    .hamster-status.sleeping .dot { background: #9ca49a; }
     .hero { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(235px, .65fr); gap: 20px; margin-bottom: 20px; }
     .card { border: 1px solid #e9e6de; border-radius: 22px; background: #fff; box-shadow: 0 12px 30px rgba(33, 43, 36, .035); }
     .featured { padding: 28px 30px; background: #31463b; color: #fff; border-color: #31463b; min-height: 210px; }
@@ -49,6 +53,12 @@
     .bar { width: 100%; min-height: 0; border-radius: 7px 7px 0 0; background: #d88954; transition: height .3s ease; }
     .bar-slot:first-child .bar { background: #4f8068; }
     .bar-label { height: 17px; color: #849087; font-size: 11px; white-space: nowrap; }
+    .hourly-chart { gap: 7px; height: 157px; }
+    .hourly-chart .bar-track { height: 125px; }
+    .hourly-chart .bar-slot:first-child .bar { background: #d88954; }
+    .hourly-chart .bar-slot.is-current .bar { background: #4f8068; }
+    .hourly-chart .bar-slot.is-current .bar-label { color: #4f8068; font-weight: 700; }
+    .hourly-chart .bar-label { font-size: 10px; }
     .history { padding: 0; margin: 0; list-style: none; }
     .history li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 18px; padding: 15px 0; border-top: 1px solid #edf0ea; }
     .history li:first-child { border-top: 0; }
@@ -68,6 +78,7 @@
       .section { padding: 22px 18px; }
       .chart-wrap { overflow-x: auto; padding-bottom: 5px; }
       .chart { min-width: 600px; }
+      .hourly-chart { min-width: 780px; }
     }
     @media (max-width: 420px) {
       .history li { grid-template-columns: 1fr auto; gap: 3px 8px; }
@@ -83,7 +94,10 @@
         <h1>Steve 🐹</h1>
         <p class="subtitle">Kolik toho Steve naběhal?</p>
       </div>
-      <div id="connection" class="connection" role="status"><span class="dot"></span><span id="connection-text">Načítám data…</span></div>
+      <div class="statuses">
+        <div id="connection" class="connection" role="status"><span class="dot"></span><span id="connection-text">Načítám data…</span></div>
+        <div id="hamster-status" class="connection hamster-status sleeping" role="status"><span class="dot"></span><span id="hamster-status-text">Zjišťuji stav…</span></div>
+      </div>
     </header>
 
     <div class="hero">
@@ -107,6 +121,11 @@
       <section class="card metric"><div class="label">Nejvyšší rychlost</div><div id="max-speed" class="value">—</div></section>
     </div>
 
+    <section class="card section" aria-labelledby="hourly-title">
+      <div class="section-head"><h2 id="hourly-title">Aktuální křeččí den</h2><span id="hourly-total" class="muted">Otáčky po hodinách</span></div>
+      <div class="chart-wrap"><div id="hourly-chart" class="chart hourly-chart" role="img" aria-label="Otáčky v jednotlivých hodinách aktuálního křeččího dne, od aktuální hodiny zpět k poledni"></div></div>
+    </section>
+
     <section class="card section" aria-labelledby="chart-title">
       <div class="section-head"><h2 id="chart-title">Posledních 14 dní</h2><span class="muted">Vzdálenost za noc</span></div>
       <div class="chart-wrap"><div id="chart" class="chart" role="img" aria-label="Vzdálenost za posledních 14 křeččích dnů"></div></div>
@@ -116,7 +135,7 @@
       <div class="section-head"><h2 id="history-title">Nedávné běhání</h2><span class="muted">Poledne až poledne</span></div>
       <ul id="history" class="history"><li class="empty">Načítám…</li></ul>
     </section>
-    <footer id="updated">Data se aktualizují každých 30 sekund.</footer>
+    <footer id="updated">Data se aktualizují každých 5 sekund.</footer>
   </main>
 
   <script>
@@ -146,6 +165,14 @@
     }
 
     function render(data) {
+      const hamsterStatus = {
+        running: ['running', 'Steve právě běhá'],
+        recent: ['recent', 'Steve byl nedávno aktivní'],
+        sleeping: ['sleeping', 'Steve nejspíš spí'],
+      }[data.hamster_status] || ['sleeping', 'Stav neznámý'];
+      $('hamster-status').className = 'connection hamster-status ' + hamsterStatus[0];
+      $('hamster-status-text').textContent = hamsterStatus[1];
+
       const latest = data.latest;
       $('latest-distance').textContent = latest ? distance(latest.distance_m) : '0 m';
       $('latest-date').textContent = latest
@@ -156,6 +183,33 @@
       $('moving-time').textContent = latest ? duration(latest.moving_time_s) : '0 min';
       $('revolutions').textContent = latest ? number.format(latest.revolutions) : '0';
       $('max-speed').textContent = latest ? number.format(latest.max_speed_kmh) + ' km/h' : '0 km/h';
+
+      const hourlyCounts = data.hourly_revolutions;
+      $('hourly-total').textContent = number.format(hourlyCounts.reduce((sum, count) => sum + count, 0)) + ' otáček · aktuální hodina vlevo';
+      const hourlyMax = Math.max(1, ...hourlyCounts);
+      const currentIndex = (data.current_hour - 12 + 24) % 24;
+      const elapsedHours = Array.from({ length: currentIndex + 1 }, (_, offset) => currentIndex - offset);
+      const hourlyBars = elapsedHours.map(index => {
+        const count = hourlyCounts[index];
+        const hour = (12 + index) % 24;
+        const nextHour = (hour + 1) % 24;
+        const slot = document.createElement('div');
+        slot.className = 'bar-slot' + (hour === data.current_hour ? ' is-current' : '');
+        slot.title = String(hour).padStart(2, '0') + ':00–' + String(nextHour).padStart(2, '0') + ':00 · ' + number.format(count) + ' otáček';
+        const track = document.createElement('div');
+        track.className = 'bar-track';
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.style.height = count ? Math.max(3, count / hourlyMax * 100) + '%' : '0';
+        track.append(bar);
+        const label = document.createElement('span');
+        label.className = 'bar-label';
+        label.textContent = String(hour).padStart(2, '0');
+        slot.append(track, label);
+        return slot;
+      });
+      $('hourly-chart').style.gridTemplateColumns = `repeat(${hourlyBars.length}, minmax(22px, 1fr))`;
+      $('hourly-chart').replaceChildren(...hourlyBars);
 
       const byDay = new Map(data.history.map(activity => [activity.day, activity]));
       const days = Array.from({ length: 14 }, (_, i) => previousDay(data.day, i));
@@ -219,7 +273,7 @@
     }
 
     refresh();
-    setInterval(refresh, 30_000);
+    setInterval(refresh, 5_000);
   </script>
 </body>
 </html>

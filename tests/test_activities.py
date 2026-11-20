@@ -1,7 +1,7 @@
 import math
 from datetime import datetime, timedelta
 
-from app.activities import day_start_ms, group_activities, hamster_day
+from app.activities import day_start_ms, group_activities, hamster_day, hourly_revolutions
 
 CIRC = math.pi * 0.16
 
@@ -68,3 +68,15 @@ def test_debounce_glitch_ignored_in_speed():
     stamps = [ts(0), ts(0.05), ts(0.55)]
     [activity] = group_activities(stamps, CIRC)
     assert activity["max_speed_kmh"] == round(CIRC / 0.5 * 3.6, 1)
+
+
+def test_hourly_revolutions_run_from_noon_to_noon():
+    stamps = [ts(0), ts(3600), ts(2 * 3600), ts(13 * 3600), ts(14 * 3600)]
+    counts = hourly_revolutions(stamps, "2026-08-16")
+
+    assert len(counts) == 24
+    assert counts[10] == 1  # 22:00
+    assert counts[11] == 1  # 23:00
+    assert counts[12] == 1  # 00:00
+    assert counts[23] == 1  # 11:00 další den
+    assert sum(counts) == 4  # 12:00 už patří následujícímu dni

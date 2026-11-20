@@ -27,6 +27,7 @@ def test_dashboard_empty(tmp_path, monkeypatch):
         assert result.json()["total_revolutions"] == 0
         assert result.json()["latest"] is None
         assert result.json()["history"] == []
+        assert result.json()["hourly_revolutions"] == [0] * 24
 
 
 def test_dashboard_shows_saved_pulse(tmp_path, monkeypatch):
@@ -41,3 +42,6 @@ def test_dashboard_shows_saved_pulse(tmp_path, monkeypatch):
         assert result["latest"]["day"] == hamster_day(now_ms - 1000)
         assert result["latest"]["revolutions"] == 1
         assert result["history"][-1] == result["latest"]
+        if result["latest"]["day"] == result["day"]:
+            hour = datetime.fromtimestamp((now_ms - 1000) / 1000).hour
+            assert result["hourly_revolutions"][(hour - 12) % 24] == 1

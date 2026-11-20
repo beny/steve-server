@@ -47,6 +47,16 @@ def day_start_ms(day: str) -> int:
     return int(noon.timestamp() * 1000)
 
 
+def hourly_revolutions(timestamps_ms: list[int], day: str) -> list[int]:
+    """Otáčky po hodinách křeččího dne, v pořadí 12:00 až 11:00."""
+    counts = [0] * 24
+    for ts in timestamps_ms:
+        if hamster_day(ts) == day:
+            local_hour = datetime.fromtimestamp(ts / 1000).hour
+            counts[(local_hour - 12) % 24] += 1
+    return counts
+
+
 def _summarize(session: list[int], day: str, circumference_m: float) -> dict:
     revolutions = len(session)
     distance_m = revolutions * circumference_m
